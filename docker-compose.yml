@@ -1,0 +1,54 @@
+version: "3"
+services:
+  frontend:
+    image: nginx
+    volumes:
+      - ./frontend/static:/usr/share/nginx/html
+    depends_on:
+      - backend
+    networks:
+      - proxy
+    labels:
+      - "traefik.http.routers.web.rule=Host(`s141479.devops-ap.be`)"
+      - "traefik.http.routers.web.tls=true"
+      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=traefik"
+  
+  backend:
+    image: projectopdracht-canuski-backend:latest
+    depends_on:
+      - db
+    networks:
+      - proxy
+    environment:
+      - STORAGE=mysql
+      - MYSQL_HOST=db
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PWD=${DB_PASS}
+      - MYSQL_DB=${DB} 
+    labels:
+      - "traefik.http.routers.backend.rule=Host(`s141479.devops-ap.be`) && PathPrefix(`/api`)"
+      - "traefik.http.services.backend-service.loadbalancer.server.port=3000"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.docker.network=traefik"
+ 
+
+  db:
+    image: mysql:8.2.0
+    networks:
+      - proxy
+    volumes:
+      - db-volume:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASS}
+      - MYSQL_DATABASE=${DB}  
+networks:
+  proxy:
+    external: true
+    name: traefik
+volumes:
+  db-volume:
+    
